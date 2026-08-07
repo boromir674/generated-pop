@@ -24,7 +24,6 @@ function row(s) {
       case '=': return TILE.LOOSE;
       case 'G': return TILE.GATE;
       case 'D': return TILE.DOOR;
-      case 'P': return TILE.POTION;
       default:  return TILE.EMPTY;
     }
   });

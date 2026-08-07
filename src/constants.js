@@ -38,5 +38,4 @@ export const TILE = {
   GATE:   3,
   DOOR:   4,
   LOOSE:  5,  // loose floor that falls after being stepped on
-  POTION: 6,
 };

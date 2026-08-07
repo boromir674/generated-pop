@@ -88,6 +88,7 @@ let msgTimer = 0;
 let cameraState = { x: 0, y: 0 };
 let screenShake = 0;
 let landBounce = 0;
+let deathHandled = false;
 
 // ─── HUD helpers ─────────────────────────────────────────────────────────────
 function rebuildHealthPips(hp, maxHp) {
@@ -312,7 +313,7 @@ function gameLoop(timestamp) {
     screenShake = Math.max(screenShake, Math.min(10, player.landingImpact * 0.3));
   }
   // Jump sound
-  if (!wasGrounded !== !player.onGround && player.vy > 0) {
+  if (wasGrounded && !player.onGround && player.vy > 0) {
     audio.playJump();
   }
   if (player.attackJustTriggered) {
@@ -370,8 +371,13 @@ function gameLoop(timestamp) {
 
   // ── Player death ─────────────────────────────────────────────────────────
   if (!player.alive && player.hp <= 0) {
+    if (deathHandled) {
+      renderer.render(scene, camera);
+      requestAnimationFrame(gameLoop);
+      return;
+    }
+    deathHandled = true;
     audio.playDie();
-    player.hp = -1; // prevent re-trigger
     gameRunning = false;
     setTimeout(() => showEndScreen('YOU HAVE DIED'), 2500);
   }
@@ -397,6 +403,7 @@ function startGame() {
   roomIndex     = 0;
   timeRemaining = 3600;
   drawToggle    = false;
+  deathHandled  = false;
 
   // reset player if exists
   if (player) { player.hp = PLAYER_MAX_HP; player.alive = true; }

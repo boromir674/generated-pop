@@ -184,7 +184,7 @@ export class Player {
     // Horizontal
     this.x += this.vx * dt * 60;
     for (const col of colliders) {
-      if (!col.alive && col.type !== 'solid') continue;
+      if (col.alive === false && col.type !== 'solid') continue;
       if (col.falling) continue;
       if (this._overlapsAABB(col)) {
         if (this.vx > 0) this.x = col.x - this.hw;
@@ -198,7 +198,7 @@ export class Player {
     this.y += this.vy * dt * 60;
     for (const col of colliders) {
       if (col.falling) continue;
-      if (!col.alive && col.type !== 'solid') continue;
+      if (col.alive === false && col.type !== 'solid') continue;
       if (this._overlapsAABB(col)) {
         if (this.vy < 0) {
           // landing
