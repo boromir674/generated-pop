@@ -18,6 +18,9 @@ export function buildTextures() {
   tex.bg       = bgTexture();
   tex.potion   = potionTexture();
   tex.loose    = looseFloorTexture();
+  tex.arch     = archTexture();
+  tex.mist     = mistTexture();
+  tex.glow     = glowTexture();
 
   return tex;
 }
@@ -241,17 +244,35 @@ function bgTexture() {
   g.fillStyle = grd;
   g.fillRect(0, 0, 512, 384);
 
-  // distant arched doorways for depth
   for (let i = 0; i < 5; i++) {
-    const ax = 40 + i * 100;
-    g.strokeStyle = 'rgba(60,40,15,0.4)';
-    g.lineWidth = 3;
+    const ax = 36 + i * 100;
+    const archGrad = g.createLinearGradient(ax, 90, ax, 384);
+    archGrad.addColorStop(0, 'rgba(90,70,32,0.12)');
+    archGrad.addColorStop(1, 'rgba(15,8,6,0.6)');
+    g.fillStyle = archGrad;
     g.beginPath();
-    g.moveTo(ax, 384); g.lineTo(ax, 120);
-    g.arc(ax + 30, 120, 30, Math.PI, 0);
+    g.moveTo(ax, 384);
+    g.lineTo(ax, 124);
+    g.arc(ax + 30, 124, 30, Math.PI, 0);
     g.lineTo(ax + 60, 384);
+    g.closePath();
+    g.fill();
+    g.strokeStyle = 'rgba(85,60,22,0.35)';
+    g.lineWidth = 3;
     g.stroke();
   }
+
+  const shaft = g.createLinearGradient(0, 0, 120, 384);
+  shaft.addColorStop(0, 'rgba(255,210,110,0.12)');
+  shaft.addColorStop(1, 'rgba(255,170,80,0)');
+  g.fillStyle = shaft;
+  g.beginPath();
+  g.moveTo(40, 0);
+  g.lineTo(160, 384);
+  g.lineTo(240, 384);
+  g.lineTo(120, 0);
+  g.closePath();
+  g.fill();
 
   // subtle noise
   const id = g.getImageData(0, 0, 512, 384);
@@ -307,5 +328,86 @@ function looseFloorTexture() {
   // warning orange tint
   g.fillStyle = 'rgba(255,120,0,0.1)';
   g.fillRect(0, 0, 64, 16);
+  return toTex(c);
+}
+
+function archTexture() {
+  const [c, g] = makeCanvas(128, 256);
+  g.clearRect(0, 0, 128, 256);
+
+  const body = g.createLinearGradient(0, 0, 128, 0);
+  body.addColorStop(0, 'rgba(80,55,28,0.65)');
+  body.addColorStop(0.5, 'rgba(138,100,56,0.55)');
+  body.addColorStop(1, 'rgba(48,28,18,0.65)');
+  g.fillStyle = body;
+
+  g.beginPath();
+  g.moveTo(20, 256);
+  g.lineTo(20, 88);
+  g.quadraticCurveTo(20, 32, 64, 32);
+  g.quadraticCurveTo(108, 32, 108, 88);
+  g.lineTo(108, 256);
+  g.closePath();
+  g.fill();
+
+  g.globalCompositeOperation = 'destination-out';
+  g.beginPath();
+  g.moveTo(38, 256);
+  g.lineTo(38, 102);
+  g.quadraticCurveTo(38, 62, 64, 62);
+  g.quadraticCurveTo(90, 62, 90, 102);
+  g.lineTo(90, 256);
+  g.closePath();
+  g.fill();
+  g.globalCompositeOperation = 'source-over';
+
+  g.strokeStyle = 'rgba(255,214,148,0.18)';
+  g.lineWidth = 4;
+  g.strokeRect(20, 88, 88, 156);
+  g.beginPath();
+  g.moveTo(20, 88);
+  g.quadraticCurveTo(20, 32, 64, 32);
+  g.quadraticCurveTo(108, 32, 108, 88);
+  g.stroke();
+
+  for (let y = 96; y < 244; y += 24) {
+    g.strokeStyle = 'rgba(18,10,8,0.42)';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(20, y);
+    g.lineTo(108, y);
+    g.stroke();
+  }
+
+  return toTex(c);
+}
+
+function mistTexture() {
+  const [c, g] = makeCanvas(256, 128);
+  g.clearRect(0, 0, 256, 128);
+  for (let i = 0; i < 9; i++) {
+    const x = 18 + i * 26;
+    const y = 48 + Math.sin(i * 1.37) * 12;
+    const grad = g.createRadialGradient(x, y, 4, x, y, 34);
+    grad.addColorStop(0, 'rgba(255,220,180,0.16)');
+    grad.addColorStop(0.45, 'rgba(120,92,72,0.1)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad;
+    g.beginPath();
+    g.ellipse(x, y, 38, 18, Math.sin(i), 0, Math.PI * 2);
+    g.fill();
+  }
+  return toTex(c);
+}
+
+function glowTexture() {
+  const [c, g] = makeCanvas(128, 128);
+  const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.15, 'rgba(255,240,180,0.95)');
+  grad.addColorStop(0.45, 'rgba(255,176,90,0.45)');
+  grad.addColorStop(1, 'rgba(255,120,40,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 128, 128);
   return toTex(c);
 }

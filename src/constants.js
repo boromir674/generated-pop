@@ -6,6 +6,12 @@ export const MAX_FALL_SPEED = -25;
 export const PLAYER_SPEED = 7;
 export const JUMP_VELOCITY = 13;
 export const PLAYER_MAX_HP = 6;
+export const PLAYER_ACCEL = 0.9;
+export const PLAYER_DECEL = 0.78;
+export const COYOTE_TIME = 0.12;
+export const JUMP_BUFFER_TIME = 0.14;
+export const CAMERA_SMOOTHING = 0.12;
+export const CAMERA_LOOKAHEAD = 120;
 
 // animation states
 export const STATE = {
