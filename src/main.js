@@ -228,6 +228,7 @@ function checkTransitions() {
   // Victory: player reaches room 2 and touches the door area
   if (roomIndex === 2 && player.x > 19 * TILE_W - 30) {
     showMessage('🏆 FREEDOM! You have escaped the dungeon!', 8);
+    audio.playVictory();
     gameRunning = false;
     setTimeout(() => showEndScreen('You have been freed!'), 3500);
   }

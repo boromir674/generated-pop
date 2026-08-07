@@ -37,6 +37,7 @@ export class Player {
     this.coyoteTime = 0;
     this.jumpBuffer = 0;
     this.attackFlash = 0;
+    this._attackCooldown = 0;
     this.attackJustTriggered = false;
     this.justLanded = false;
     this.justTookDamage = false;
@@ -518,7 +519,6 @@ function drawHurt() {
 
 function drawDie() {
   const [c, g] = makeCtx();
-  const cx = 32, by = 70;
   // lying down
   g.save(); g.translate(32, 80); g.rotate(-Math.PI / 2);
   drawHead(g, 0, -10);
