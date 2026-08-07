@@ -298,8 +298,8 @@ function buildEnemyFrames() {
   })()];
 
   // HURT & DIE use player-like stubs
-  out[STATE.HURT] = out[STATE.SWORD_IDLE];
-  out[STATE.DIE]  = out[STATE.SWORD_IDLE];
+  out[STATE.HURT] = [...out[STATE.SWORD_IDLE]];
+  out[STATE.DIE]  = [...out[STATE.SWORD_IDLE]];
 
   return out;
 }

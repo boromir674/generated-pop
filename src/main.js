@@ -302,7 +302,6 @@ function gameLoop(timestamp) {
   const input = getInput();
 
   // ── Player update ─────────────────────────────────────────────────────────
-  const wasGrounded = player.onGround;
   player.update(dt, input, colliders, enemies);
 
   // Landing dust + sound
@@ -314,7 +313,7 @@ function gameLoop(timestamp) {
     screenShake = Math.max(screenShake, Math.min(10, player.landingImpact * 0.3));
   }
   // Jump sound
-  if (wasGrounded && !player.onGround && player.vy > 0) {
+  if (player.justJumped) {
     audio.playJump();
   }
   if (player.attackJustTriggered) {
@@ -371,7 +370,7 @@ function gameLoop(timestamp) {
   }
 
   // ── Player death ─────────────────────────────────────────────────────────
-  if (!player.alive && player.hp <= 0) {
+  if (!player.alive) {
     if (deathHandled) {
       renderer.render(scene, camera);
       requestAnimationFrame(gameLoop);

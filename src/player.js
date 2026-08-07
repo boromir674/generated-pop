@@ -40,6 +40,7 @@ export class Player {
     this._attackCooldown = 0;
     this.attackJustTriggered = false;
     this.justLanded = false;
+    this.justJumped = false;
     this.justTookDamage = false;
     this.landingImpact = 0;
     this.jumpHeld = false;
@@ -85,6 +86,7 @@ export class Player {
     this.attackFlash = Math.max(0, this.attackFlash - dt);
     this.attackJustTriggered = false;
     this.justLanded = false;
+    this.justJumped = false;
     this.justTookDamage = false;
     const previousVy = this.vy;
     const wasGrounded = this.onGround;
@@ -114,6 +116,7 @@ export class Player {
       this.onGround = false;
       this.coyoteTime = 0;
       this.jumpBuffer = 0;
+      this.justJumped = true;
     }
 
     // Gravity
