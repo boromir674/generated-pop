@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prince of Persia – Three.js</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background:
+        radial-gradient(circle at top, rgba(78,55,20,0.35), transparent 30%),
+        linear-gradient(180deg, #120b08 0%, #020202 100%);
+      overflow: hidden;
+      font-family: 'Georgia', serif;
+      color: #f0d080;
+    }
+    #canvas-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas { display: block; }
+
+    /* HUD overlay */
+    #hud {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+    #hud-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 12px 20px;
+    }
+    .hud-panel {
+      background: linear-gradient(180deg, rgba(32,18,10,0.88), rgba(8,5,4,0.72));
+      border: 1px solid rgba(240,208,128,0.7);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,225,170,0.12);
+      border-radius: 6px;
+      padding: 8px 16px;
+      color: #f0d080;
+      font-size: 13px;
+      text-shadow: 0 0 8px #c8a050;
+      letter-spacing: 1px;
+      backdrop-filter: blur(4px);
+    }
+    #health-container {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    #health-label { font-size: 11px; color: #c8a050; letter-spacing: 2px; margin-bottom: 2px; }
+    #health-bar-wrap {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+    }
+    .health-pip {
+      width: 18px; height: 18px;
+      border: 2px solid #c8a050;
+      border-radius: 3px;
+      background: #3a0000;
+      transition: background 0.3s;
+    }
+    .health-pip.full { background: #e03030; box-shadow: 0 0 6px #ff4444; }
+    #timer-panel { text-align: center; }
+    #timer-val { font-size: 22px; color: #f0d080; font-weight: bold; }
+    #timer-val.urgent { color: #ff9580; text-shadow: 0 0 10px #ff7050, 0 0 18px rgba(255,80,50,0.7); animation: pulse 0.9s infinite alternate; }
+    #floor-panel { text-align: right; }
+    #floor-val { font-size: 16px; }
+
+    /* Start / Game Over screen */
+    #overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,0.82);
+      backdrop-filter: blur(6px);
+      z-index: 20;
+      color: #f0d080;
+      text-align: center;
+    }
+    #overlay h1 {
+      font-size: clamp(28px, 5vw, 56px);
+      letter-spacing: 4px;
+      text-shadow: 0 0 20px #c8a050, 0 0 40px #a06010;
+      margin-bottom: 12px;
+    }
+    #overlay .subtitle {
+      font-size: clamp(12px, 2vw, 18px);
+      color: #c8a050;
+      margin-bottom: 30px;
+      letter-spacing: 2px;
+    }
+    #overlay .controls-list {
+      font-size: clamp(11px, 1.5vw, 15px);
+      color: #d0b870;
+      line-height: 2;
+      margin-bottom: 28px;
+    }
+    #overlay .controls-list span { color: #fff; font-weight: bold; }
+    #start-btn {
+      background: transparent;
+      border: 2px solid #c8a050;
+      color: #f0d080;
+      font-family: 'Georgia', serif;
+      font-size: clamp(14px, 2vw, 20px);
+      letter-spacing: 3px;
+      padding: 12px 40px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-shadow: 0 0 8px #c8a050;
+      animation: pulse 1.8s infinite alternate;
+    }
+    #start-btn:hover {
+      background: rgba(200,160,80,0.2);
+      box-shadow: 0 0 20px #c8a050;
+    }
+    #overlay.hidden { display: none; }
+
+    #message-box {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.75);
+      border: 2px solid #c8a050;
+      border-radius: 4px;
+      color: #f0d080;
+      font-size: 16px;
+      letter-spacing: 1px;
+      padding: 10px 30px;
+      pointer-events: none;
+      z-index: 15;
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    #message-box.show { opacity: 1; }
+    @keyframes pulse {
+      from { box-shadow: 0 0 8px rgba(200,160,80,0.25); transform: scale(1); }
+      to { box-shadow: 0 0 24px rgba(255,186,88,0.5); transform: scale(1.02); }
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container">
+    <div id="hud">
+      <div id="hud-top">
+        <div class="hud-panel" id="health-container">
+          <div id="health-label">LIFE</div>
+          <div id="health-bar-wrap"></div>
+        </div>
+        <div class="hud-panel" id="timer-panel">
+          <div style="font-size:10px;letter-spacing:2px;color:#c8a050;">TIME</div>
+          <div id="timer-val">60:00</div>
+        </div>
+        <div class="hud-panel" id="floor-panel">
+          <div style="font-size:10px;letter-spacing:2px;color:#c8a050;">FLOOR</div>
+          <div id="floor-val">1</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="overlay">
+      <h1>⚔ PRINCE OF PERSIA ⚔</h1>
+      <div class="subtitle">— THREE.JS EDITION —</div>
+      <div class="controls-list">
+        <span>← →</span> Move &nbsp;|&nbsp; <span>Space / ↑</span> Jump<br>
+        <span>↓</span> Duck &nbsp;|&nbsp; <span>Q</span> Draw / Sheathe Sword<br>
+        <span>F</span> Attack &nbsp;|&nbsp; <span>Shift</span> Block / Parry<br>
+        Walk over <span>potions</span> to collect them
+      </div>
+      <button id="start-btn">BEGIN THE QUEST</button>
+    </div>
+
+    <div id="message-box"></div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
