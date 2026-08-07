@@ -38,3 +38,13 @@ npm run preview  # serve production build
 ```
 
 Requires Node 18+.
+
+## GitHub Pages deployment
+
+This repository includes an Actions workflow at `.github/workflows/deploy-pages.yml` that builds and deploys `dist/` to GitHub Pages on every branch push (and via manual dispatch).
+
+Expected Pages URL:
+
+`https://boromir674.github.io/generated-pop/`
+
+After pushing this branch, open the latest **Deploy to GitHub Pages** workflow run and use the deployed `page_url`.
