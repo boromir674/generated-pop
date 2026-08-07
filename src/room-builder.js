@@ -21,6 +21,7 @@ export function buildRoom(roomData, textures) {
   bgGeo.translate((COLS * TILE_W) / 2, -(ROWS * TILE_H) / 2, -2);
   const bgMat = new THREE.MeshBasicMaterial({ map: textures.bg, depthWrite: false });
   group.add(new THREE.Mesh(bgGeo, bgMat));
+  addBackdropDressings(group, COLS, ROWS, textures);
 
   // ── tiles ──────────────────────────────────────────────────────────────────
   for (let r = 0; r < ROWS; r++) {
@@ -125,6 +126,18 @@ function addGate(group, wx, wy, textures) {
 }
 
 function addTorch(group, wx, wy, textures, torchMeshes) {
+  const glowGeo = new THREE.PlaneGeometry(120, 120);
+  const glowMat = new THREE.MeshBasicMaterial({
+    map: textures.glow,
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const glow = new THREE.Mesh(glowGeo, glowMat);
+  glow.position.set(wx, wy + 8, 0.18);
+  group.add(glow);
+
   const geo = new THREE.PlaneGeometry(16, 32);
   const mat = new THREE.MeshBasicMaterial({ map: textures.torch, transparent: true });
   const mesh = new THREE.Mesh(geo, mat);
@@ -136,5 +149,44 @@ function addTorch(group, wx, wy, textures, torchMeshes) {
   light.position.set(wx, wy + 8, 10);
   group.add(light);
 
-  torchMeshes.push({ mesh, light, base: { x: wx, y: wy }, phase: Math.random() * Math.PI * 2 });
+  torchMeshes.push({ mesh, light, glow, base: { x: wx, y: wy }, phase: Math.random() * Math.PI * 2 });
+}
+
+function addBackdropDressings(group, cols, rows, textures) {
+  const roomWidth = cols * TILE_W;
+  const roomHeight = rows * TILE_H;
+
+  for (let i = 0; i < 3; i++) {
+    const archGeo = new THREE.PlaneGeometry(200, 300);
+    const archMat = new THREE.MeshBasicMaterial({
+      map: textures.arch,
+      transparent: true,
+      depthWrite: false,
+      opacity: 0.45 - i * 0.08,
+    });
+    const arch = new THREE.Mesh(archGeo, archMat);
+    arch.position.set(roomWidth * (0.2 + i * 0.3), -roomHeight * 0.52, -1.35 + i * 0.04);
+    group.add(arch);
+  }
+
+  for (let i = 0; i < 2; i++) {
+    const mistGeo = new THREE.PlaneGeometry(roomWidth * 0.75, 150);
+    const mistMat = new THREE.MeshBasicMaterial({
+      map: textures.mist,
+      transparent: true,
+      depthWrite: false,
+      opacity: 0.22,
+      blending: THREE.AdditiveBlending,
+    });
+    const mist = new THREE.Mesh(mistGeo, mistMat);
+    mist.position.set(roomWidth * (0.3 + i * 0.35), -roomHeight + 94 + i * 18, -1.1 + i * 0.04);
+    group.add(mist);
+  }
+
+  const vignetteGeo = new THREE.PlaneGeometry(roomWidth, roomHeight);
+  vignetteGeo.translate(roomWidth / 2, -roomHeight / 2, 0);
+  const vignetteMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.14, depthWrite: false });
+  const vignette = new THREE.Mesh(vignetteGeo, vignetteMat);
+  vignette.position.z = 0.19;
+  group.add(vignette);
 }

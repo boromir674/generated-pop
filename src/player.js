@@ -1,5 +1,18 @@
 import * as THREE from 'three';
-import { TILE_W, TILE_H, GRAVITY, MAX_FALL_SPEED, PLAYER_SPEED, JUMP_VELOCITY, PLAYER_MAX_HP, STATE } from './constants.js';
+import {
+  TILE_W,
+  TILE_H,
+  GRAVITY,
+  MAX_FALL_SPEED,
+  PLAYER_SPEED,
+  JUMP_VELOCITY,
+  PLAYER_MAX_HP,
+  PLAYER_ACCEL,
+  PLAYER_DECEL,
+  COYOTE_TIME,
+  JUMP_BUFFER_TIME,
+  STATE,
+} from './constants.js';
 
 const FRAME_TIME = 1 / 12; // animation fps
 
@@ -21,6 +34,14 @@ export class Player {
     this.facingRight = true;
     this.state = STATE.IDLE;
     this.invincible = 0; // seconds of invincibility after being hit
+    this.coyoteTime = 0;
+    this.jumpBuffer = 0;
+    this.attackFlash = 0;
+    this.attackJustTriggered = false;
+    this.justLanded = false;
+    this.justTookDamage = false;
+    this.landingImpact = 0;
+    this.jumpHeld = false;
 
     // animation
     this._animTime = 0;
@@ -60,28 +81,52 @@ export class Player {
     if (!this.alive) { this._updateDeath(dt); return; }
 
     this.invincible = Math.max(0, this.invincible - dt);
+    this.attackFlash = Math.max(0, this.attackFlash - dt);
+    this.attackJustTriggered = false;
+    this.justLanded = false;
+    this.justTookDamage = false;
+    const previousVy = this.vy;
+    const wasGrounded = this.onGround;
 
     const prevState = this.state;
 
     // ── Input → velocity ─────────────────────────────────────────────────────
     if (this.state !== STATE.HURT) {
-      if (input.left)  { this.vx = -PLAYER_SPEED; this.facingRight = false; }
-      else if (input.right) { this.vx = PLAYER_SPEED; this.facingRight = true; }
-      else { this.vx *= 0.7; if (Math.abs(this.vx) < 0.5) this.vx = 0; }
+      if (input.left)  {
+        this.vx = Math.max(this.vx - PLAYER_ACCEL, -PLAYER_SPEED);
+        this.facingRight = false;
+      } else if (input.right) {
+        this.vx = Math.min(this.vx + PLAYER_ACCEL, PLAYER_SPEED);
+        this.facingRight = true;
+      } else {
+        this.vx *= PLAYER_DECEL;
+        if (Math.abs(this.vx) < 0.2) this.vx = 0;
+      }
     }
 
-    // Jump
-    if ((input.jump || input.up) && this.onGround && this.state !== STATE.HURT) {
+    const jumpPressed = input.jump || input.up;
+    this.jumpBuffer = jumpPressed ? JUMP_BUFFER_TIME : Math.max(0, this.jumpBuffer - dt);
+    this.coyoteTime = this.onGround ? COYOTE_TIME : Math.max(0, this.coyoteTime - dt);
+
+    if (this.jumpBuffer > 0 && this.coyoteTime > 0 && this.state !== STATE.HURT) {
       this.vy = JUMP_VELOCITY;
       this.onGround = false;
+      this.coyoteTime = 0;
+      this.jumpBuffer = 0;
     }
 
     // Gravity
-    this.vy += GRAVITY * dt;
+    const gravityScale = !this.onGround && !jumpPressed && this.vy > 0 ? 1.45 : 1;
+    this.vy += GRAVITY * gravityScale * dt;
     if (this.vy < MAX_FALL_SPEED) this.vy = MAX_FALL_SPEED;
 
     // ── Move + collide ────────────────────────────────────────────────────────
     this._moveAndCollide(dt, colliders);
+    this.jumpHeld = jumpPressed;
+    if (!wasGrounded && this.onGround) {
+      this.justLanded = true;
+      this.landingImpact = Math.max(0, Math.abs(previousVy));
+    }
 
     // ── Sword / combat ────────────────────────────────────────────────────────
     if (input.attack && this.swordDrawn) {
@@ -117,6 +162,7 @@ export class Player {
     this.invincible = 1.2;
     this.state = STATE.HURT;
     this.vy = 6; this.vx = this.facingRight ? -4 : 4;
+    this.justTookDamage = true;
     if (this.hp <= 0) this._die();
   }
 
@@ -199,12 +245,14 @@ export class Player {
   _attack(enemies) {
     if (this._attackCooldown > 0) return;
     this._attackCooldown = 0.5;
+    this.attackFlash = 0.22;
+    this.attackJustTriggered = true;
     const dir = this.facingRight ? 1 : -1;
     const sx = this.x + dir * 40;
     for (const e of enemies) {
       if (!e.alive) continue;
       const dx = e.x - sx, dy = e.y - this.y;
-      if (Math.abs(dx) < 45 && Math.abs(dy) < 60) {
+      if (Math.abs(dx) < 38 && Math.abs(dy) < 50) {
         e.takeDamage(1);
       }
     }
@@ -228,11 +276,14 @@ export class Player {
     if (!this.swordDrawn) { this.sword.visible = false; return; }
     this.sword.visible = true;
     const dir = this.facingRight ? 1 : -1;
-    const ox = this.state === STATE.ATTACK ? 50 : 32;
-    this.sword.position.set(this.x + dir * ox, this.y + 40, 0.55);
+    const swing = this.attackFlash > 0 ? this.attackFlash / 0.22 : 0;
+    const ox = this.state === STATE.ATTACK ? 44 + (1 - swing) * 18 : 32;
+    const oy = this.state === STATE.ATTACK ? 36 + (1 - swing) * 10 : 40;
+    this.sword.position.set(this.x + dir * ox, this.y + oy, 0.55);
     this.sword.scale.x = dir;
-    const angle = this.state === STATE.ATTACK ? -0.3 : 0;
+    const angle = this.state === STATE.ATTACK ? -0.15 - (1 - swing) * 0.85 : 0;
     this.sword.rotation.z = angle * dir;
+    this.sword.children[0].material.color.setHex(this.attackFlash > 0 ? 0xf7f1c8 : 0xdde8ff);
   }
 }
 

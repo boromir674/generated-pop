@@ -6,7 +6,7 @@ import { Enemy } from './enemy.js';
 import { ParticleSystem } from './particles.js';
 import { AudioManager } from './audio.js';
 import { LEVELS } from './level.js';
-import { TILE_W, TILE_H, PLAYER_MAX_HP } from './constants.js';
+import { TILE_W, TILE_H, PLAYER_MAX_HP, CAMERA_SMOOTHING, CAMERA_LOOKAHEAD } from './constants.js';
 
 // ─── DOM references ───────────────────────────────────────────────────────────
 const container    = document.getElementById('canvas-container');
@@ -18,9 +18,10 @@ const floorEl      = document.getElementById('floor-val');
 const msgBox       = document.getElementById('message-box');
 
 // ─── Three.js setup ───────────────────────────────────────────────────────────
-const renderer = new THREE.WebGLRenderer({ antialias: false });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.shadowMap.enabled = false;
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
 container.appendChild(renderer.domElement);
 
 const GAME_W = 1280;
@@ -30,11 +31,15 @@ const camera = new THREE.OrthographicCamera(0, GAME_W, 0, -GAME_H, -100, 100);
 camera.position.z = 10;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
+scene.background = new THREE.Color(0x090507);
 
 // ambient light for overall visibility
-const ambientLight = new THREE.AmbientLight(0x403020, 1.2);
+const ambientLight = new THREE.AmbientLight(0x35293a, 1.3);
 scene.add(ambientLight);
+
+const moonLight = new THREE.DirectionalLight(0x7f95c8, 0.25);
+moonLight.position.set(300, 180, 50);
+scene.add(moonLight);
 
 // ─── Resize handler ───────────────────────────────────────────────────────────
 function resize() {
@@ -80,6 +85,9 @@ let roomIndex = 0;
 let timeRemaining = 3600; // seconds
 let gameRunning = false;
 let msgTimer = 0;
+let cameraState = { x: 0, y: 0 };
+let screenShake = 0;
+let landBounce = 0;
 
 // ─── HUD helpers ─────────────────────────────────────────────────────────────
 function rebuildHealthPips(hp, maxHp) {
@@ -130,6 +138,10 @@ function loadRoom(index) {
   player.y = -(roomData.startRow * TILE_H);
   player.vx = 0; player.vy = 0;
   player.onGround = false;
+  cameraState = {
+    x: Math.max(0, Math.min(roomData.tiles[0].length * TILE_W - GAME_W, player.x - GAME_W / 2)),
+    y: Math.max(0, Math.min(roomData.tiles.length * TILE_H - GAME_H, -player.y - GAME_H / 2 + 64)),
+  };
 
   floorEl.textContent = index + 1;
   rebuildHealthPips(player.hp, PLAYER_MAX_HP);
@@ -142,17 +154,27 @@ function updateCamera() {
   const roomH = roomData.tiles.length * TILE_H;
 
   // clamp camera so it never shows outside room
-  let cx = player.x - GAME_W / 2;
+  const lookAhead = (player.vx || 0) * CAMERA_LOOKAHEAD / 10;
+  let cx = player.x - GAME_W / 2 + lookAhead;
   let cy = -player.y - GAME_H / 2 + 64;
 
   cx = Math.max(0, Math.min(roomW - GAME_W, cx));
   cy = Math.max(0, Math.min(roomH - GAME_H, cy));
 
-  camera.left   =  cx;
-  camera.right  =  cx + GAME_W;
-  camera.top    = -cy;
-  camera.bottom = -(cy + GAME_H);
+  cameraState.x += (cx - cameraState.x) * CAMERA_SMOOTHING;
+  cameraState.y += (cy - cameraState.y) * (CAMERA_SMOOTHING * 0.9);
+
+  const shakeX = screenShake > 0 ? (Math.random() - 0.5) * screenShake : 0;
+  const shakeY = screenShake > 0 ? (Math.random() - 0.5) * screenShake + landBounce : landBounce;
+
+  camera.left   =  cameraState.x + shakeX;
+  camera.right  =  cameraState.x + GAME_W + shakeX;
+  camera.top    = -(cameraState.y + shakeY);
+  camera.bottom = -(cameraState.y + GAME_H + shakeY);
   camera.updateProjectionMatrix();
+
+  screenShake = Math.max(0, screenShake * 0.84 - 0.15);
+  landBounce *= 0.8;
 }
 
 // ─── Update loose tiles ───────────────────────────────────────────────────────
@@ -173,6 +195,8 @@ function updateTorches(dt) {
   for (const t of torchMeshes) {
     const flicker = Math.sin(torchTime * 12 + t.phase) * 0.15 + Math.sin(torchTime * 7.3 + t.phase) * 0.08;
     t.light.intensity = 1.8 + flicker;
+    t.glow.material.opacity = 0.42 + flicker * 0.25;
+    t.glow.scale.setScalar(1 + flicker * 0.08);
     // slight position wobble
     t.light.position.x = t.base.x + Math.sin(torchTime * 8 + t.phase) * 2;
     t.light.position.y = t.base.y + 8;
@@ -265,6 +289,7 @@ function gameLoop(timestamp) {
   const mins = Math.floor(timeRemaining / 60);
   const secs = Math.floor(timeRemaining % 60);
   timerEl.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  timerEl.classList.toggle('urgent', timeRemaining < 60);
 
   // ── Draw sword toggle ─────────────────────────────────────────────────────
   if (drawToggle) {
@@ -279,13 +304,26 @@ function gameLoop(timestamp) {
   player.update(dt, input, colliders, enemies);
 
   // Landing dust + sound
-  if (!wasGrounded && player.onGround) {
-    particles.emit(player.x, player.y + 2, 'dust', 8);
+  if (player.justLanded) {
+    const impact = Math.max(0, player.landingImpact - 8);
+    particles.emit(player.x, player.y + 2, 'dust', impact > 6 ? 16 : 10, { direction: -Math.PI / 2, spread: Math.PI * 0.75 });
     audio.playLand();
+    landBounce = -Math.min(10, player.landingImpact * 0.35);
+    screenShake = Math.max(screenShake, Math.min(10, player.landingImpact * 0.3));
   }
   // Jump sound
   if (!wasGrounded !== !player.onGround && player.vy > 0) {
     audio.playJump();
+  }
+  if (player.attackJustTriggered) {
+    const dir = player.facingRight ? 0 : Math.PI;
+    particles.emit(player.x + (player.facingRight ? 38 : -38), player.y + 44, 'slash', 12, { direction: dir, spread: 0.5 });
+    particles.emit(player.x + (player.facingRight ? 46 : -46), player.y + 44, 'spark', 5, { direction: dir, spread: 0.55 });
+    audio.playSwordClash();
+    screenShake = Math.max(screenShake, 4.5);
+  }
+  if (player.justTookDamage) {
+    screenShake = Math.max(screenShake, 8);
   }
 
   // ── Enemies ───────────────────────────────────────────────────────────────

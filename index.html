@@ -7,9 +7,12 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: #000;
+      background:
+        radial-gradient(circle at top, rgba(78,55,20,0.35), transparent 30%),
+        linear-gradient(180deg, #120b08 0%, #020202 100%);
       overflow: hidden;
       font-family: 'Georgia', serif;
+      color: #f0d080;
     }
     #canvas-container {
       position: relative;
@@ -35,14 +38,16 @@
       padding: 12px 20px;
     }
     .hud-panel {
-      background: rgba(0,0,0,0.65);
-      border: 2px solid #c8a050;
-      border-radius: 4px;
-      padding: 6px 14px;
+      background: linear-gradient(180deg, rgba(32,18,10,0.88), rgba(8,5,4,0.72));
+      border: 1px solid rgba(240,208,128,0.7);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,225,170,0.12);
+      border-radius: 6px;
+      padding: 8px 16px;
       color: #f0d080;
       font-size: 13px;
       text-shadow: 0 0 8px #c8a050;
       letter-spacing: 1px;
+      backdrop-filter: blur(4px);
     }
     #health-container {
       display: flex;
@@ -65,6 +70,7 @@
     .health-pip.full { background: #e03030; box-shadow: 0 0 6px #ff4444; }
     #timer-panel { text-align: center; }
     #timer-val { font-size: 22px; color: #f0d080; font-weight: bold; }
+    #timer-val.urgent { color: #ff9580; text-shadow: 0 0 10px #ff7050, 0 0 18px rgba(255,80,50,0.7); animation: pulse 0.9s infinite alternate; }
     #floor-panel { text-align: right; }
     #floor-val { font-size: 16px; }
 
@@ -77,6 +83,7 @@
       align-items: center;
       justify-content: center;
       background: rgba(0,0,0,0.82);
+      backdrop-filter: blur(6px);
       z-index: 20;
       color: #f0d080;
       text-align: center;
@@ -111,6 +118,7 @@
       cursor: pointer;
       transition: all 0.2s;
       text-shadow: 0 0 8px #c8a050;
+      animation: pulse 1.8s infinite alternate;
     }
     #start-btn:hover {
       background: rgba(200,160,80,0.2);
@@ -136,6 +144,10 @@
       transition: opacity 0.5s;
     }
     #message-box.show { opacity: 1; }
+    @keyframes pulse {
+      from { box-shadow: 0 0 8px rgba(200,160,80,0.25); transform: scale(1); }
+      to { box-shadow: 0 0 24px rgba(255,186,88,0.5); transform: scale(1.02); }
+    }
   </style>
 </head>
 <body>

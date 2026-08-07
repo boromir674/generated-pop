@@ -40,9 +40,11 @@ export class ParticleSystem {
     this._maxParticles = MAX;
   }
 
-  emit(x, y, type, count = 8) {
+  emit(x, y, type, count = 8, options = {}) {
+    const dir = options.direction ?? 0;
+    const spread = options.spread ?? Math.PI * 2;
     for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
+      const angle = dir + (Math.random() - 0.5) * spread;
       const speed = Math.random() * 3 + 0.5;
       let r, g, b, life, size, grav;
 
@@ -71,6 +73,12 @@ export class ParticleSystem {
           size = 2 + Math.random() * 2;
           grav = 5;
           break;
+        case 'slash':
+          r = 1.0; g = 0.92; b = 0.6;
+          life = 0.18 + Math.random() * 0.08;
+          size = 8 + Math.random() * 8;
+          grav = -2;
+          break;
         default:
           r = 1; g = 1; b = 1; life = 0.5; size = 4; grav = 0;
       }
@@ -79,8 +87,8 @@ export class ParticleSystem {
 
       this._particles.push({
         x, y, z: 0.9,
-        vx: Math.cos(angle) * speed,
-        vy: Math.abs(Math.sin(angle)) * speed * (type === 'dust' ? -1 : 1),
+        vx: Math.cos(angle) * speed * (type === 'slash' ? 1.7 : 1),
+        vy: Math.abs(Math.sin(angle)) * speed * (type === 'dust' ? -1 : type === 'slash' ? 0.4 : 1),
         r, g, b, life, maxLife: life, size, grav,
       });
     }
